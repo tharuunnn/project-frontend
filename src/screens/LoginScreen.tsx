@@ -1,67 +1,153 @@
 // src/screens/LoginScreen.tsx
-import { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity } from "react-native";
+import React, { useState, useMemo } from "react";
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from "react-native";
+import { Feather } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
+import Input from "../components/ui/Input";
+import Button from "../components/ui/Button";
+import Text from "../components/ui/Text";
 
 export default function LoginScreen({ navigation }: any) {
   const { login } = useAuth();
+  const { isDark } = useTheme();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const { textColor, mutedColor, iconColor } = useMemo(
+    () => ({
+      textColor: isDark ? "#F9FAFB" : "#111827",
+      mutedColor: isDark ? "#9CA3AF" : "#6B7280",
+      iconColor: isDark ? "#9CA3AF" : "#6B7280",
+    }),
+    [isDark]
+  );
 
   const handleLogin = async () => {
-    // Frontend validation
     if (!email || !password) {
       setError("Please fill in all fields.");
       return;
     }
 
-    setError("");
-    const ok = await login(email, password);
-
-    if (!ok) {
-      setError("Invalid email or password.");
+    try {
+      setLoading(true);
+      setError("");
+      const ok = await login(email, password);
+      if (!ok) {
+        setError("Invalid email or password.");
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <View className="flex-1 bg-black items-center justify-center px-6">
-      <Text className="text-white text-3xl font-bold mb-8">Login</Text>
-
-      <TextInput
-        className="w-full bg-gray-900 text-white px-4 py-3 rounded-lg mb-3 border border-gray-700"
-        placeholder="Email"
-        placeholderTextColor="#777"
-        autoCapitalize="none"
-        onChangeText={setEmail}
-        value={email}
-      />
-
-      <TextInput
-        className="w-full bg-gray-900 text-white px-4 py-3 rounded-lg mb-3 border border-gray-700"
-        placeholder="Password"
-        placeholderTextColor="#777"
-        secureTextEntry
-        onChangeText={setPassword}
-        value={password}
-      />
-
-      {error ? <Text className="text-red-400 mb-3">{error}</Text> : null}
-
-      <TouchableOpacity
-        onPress={handleLogin}
-        className="w-full bg-blue-600 py-3 rounded-lg active:bg-blue-700"
+    <KeyboardAvoidingView
+      style={[styles.container, isDark && styles.darkContainer]}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
+    >
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <Text className="text-center text-white text-lg font-medium">Login</Text>
-      </TouchableOpacity>
+        <View style={styles.header}>
+          <Text style={[styles.title, { color: textColor }]}>Sign in</Text>
+          <Text style={[styles.subtitle, { color: mutedColor }]}>Welcome back. Please enter your details.</Text>
+        </View>
 
-      <TouchableOpacity
-        onPress={() => navigation.navigate("Signup")}
-        className="mt-4"
-      >
-        <Text className="text-blue-400">Create an account</Text>
-      </TouchableOpacity>
-    </View>
+        <View style={styles.form}>
+          <Input
+            leftIcon={<Feather name="mail" size={20} color={iconColor} />}
+            value={email}
+            onChangeText={setEmail}
+            placeholder="Email address"
+            autoCapitalize="none"
+            autoComplete="email"
+            keyboardType="email-address"
+            autoCorrect={false}
+            returnKeyType="next"
+          />
+
+          <Input
+            leftIcon={<Feather name="lock" size={20} color={iconColor} />}
+            value={password}
+            onChangeText={setPassword}
+            placeholder="Password"
+            secureTextEntry
+            returnKeyType="done"
+          />
+
+          {error ? (
+            <Text style={[styles.errorText]}>{error}</Text>
+          ) : null}
+
+          <View style={styles.buttonGroup}>
+            <Button
+              onPress={handleLogin}
+              loading={loading}
+              variant="primary"
+              size="lg"
+              leftIcon={!loading && <Feather name="log-in" size={20} color="#FFFFFF" />}
+            >
+              {loading ? "Signing in..." : "Sign In"}
+            </Button>
+
+            <Button
+              onPress={() => navigation.navigate("Signup")}
+              variant="ghost"
+              size="lg"
+            >
+              Create an account
+            </Button>
+          </View>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+  },
+  darkContainer: {
+    backgroundColor: "#111827",
+  },
+  content: {
+    flexGrow: 1,
+    padding: 20,
+    paddingBottom: 40,
+    justifyContent: "center",
+  },
+  header: {
+    marginBottom: 32,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: "700",
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+    opacity: 0.8,
+  },
+  form: {
+    width: "100%",
+  },
+  buttonGroup: {
+    marginTop: 24,
+    gap: 12,
+  },
+  errorText: {
+    color: "#EF4444",
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: "center",
+  },
+});
